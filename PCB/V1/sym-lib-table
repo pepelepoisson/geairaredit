@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name Project_Library)(type Legacy)(uri ${KIPRJMOD}/lib_sch/Project_Library.lib)(options "")(descr ""))
+  (lib (name GeaiRareDit_PCB_Kicad5)(type Legacy)(uri ${KIPRJMOD}/lib_sch/GeaiRareDit_PCB_Kicad5.lib)(options "")(descr ""))
+)
