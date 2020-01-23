@@ -5,4 +5,6 @@
   (lib (name Resistor_THT)(type KiCad)(uri ${KISYSMOD}/Resistor_THT.pretty)(options "")(descr ""))
   (lib (name Button_Switch_THT)(type KiCad)(uri ${KISYSMOD}/Button_Switch_THT.pretty)(options "")(descr ""))
   (lib (name Package_TO_SOT_THT)(type KiCad)(uri ${KISYSMOD}/Package_TO_SOT_THT.pretty)(options "")(descr ""))
+  (lib (name lib_fp)(type KiCad)(uri ${KIPRJMOD}/lib_fp.pretty)(options "")(descr ""))
+  (lib (name MountingHole)(type KiCad)(uri ${KISYSMOD}/MountingHole.pretty)(options "")(descr ""))
 )

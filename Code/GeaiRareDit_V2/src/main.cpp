@@ -27,7 +27,7 @@ Inspired from:
 *************************************************/
 // USER-DEFINED CONFIG SETTINGS AND TUNABLES
 #define BRIGHTNESS 10                 // 0-255 LEDs brightness - default setting
-#define SHOW_SPLASH_SCREEN 0          // Set to 1 to show splash screen at startup, 0 otherwise
+#define SHOW_SPLASH_SCREEN 1          // Set to 1 to show splash screen at startup, 0 otherwise
 #define USE_5X3_FONT 1                // Set to 1 to use small 5pts font instead of standard 7pts
 #define MAX_REST_TIME 600000           //max waiting time before going to sleep
 #define MAX_IDLE_TIME 30000           //max waiting time before going to sleep
@@ -212,6 +212,8 @@ uint16_t morebmpcolor[] = { LED_RED_VERYLOW,LED_RED_LOW,LED_RED_MEDIUM,LED_RED_H
 uint8_t y_text_ref= 0;  // Reference position used when displaying text on the matrix
 int Vcc=0;  // Variable holding battery voltage in mV
 unsigned long start_time=0, current_time=0, elapsed_time=0;  // Time references and counters
+uint16_t menucolor[] = { LED_RED_MEDIUM, LED_BLUE_MEDIUM,  LED_ORANGE_MEDIUM, LED_GREEN_MEDIUM};  // Sequence of colors in menu cycles
+uint16_t menusymbol[] = { 7,8,9,10 };  // Sequence of symbols from monochrome_8x8_symbols.h in menu cycles
 
 /*************************************************
 * Subroutines
@@ -507,23 +509,14 @@ void attractMode(void){  // Show an "attract mode" display while waiting for use
 
     if (millis()-start_time>MAX_IDLE_TIME){start_time=millis();RestMode();}
 
-    //while(checkButton() != CHOICE_NONE){delay(50);}  // Wait that button is released (used if returning from a button-induced wake-up)
+    while(checkButton() != CHOICE_NONE){delay(50);}  // Wait that button is released (used if returning from a button-induced wake-up)
 
-    setLEDs(CHOICE_RED);
-    delay(100);
-    if (checkButton() != CHOICE_NONE) return;
-
-    setLEDs(CHOICE_BLUE);
-    delay(100);
-    if (checkButton() != CHOICE_NONE) return;
-
-    setLEDs(CHOICE_ORANGE);
-    delay(100);
-    if (checkButton() != CHOICE_NONE) return;
-
-    setLEDs(CHOICE_GREEN);
-    delay(100);
-    if (checkButton() != CHOICE_NONE) return;
+    for (uint8_t i=0; i<4;i++){
+      display_bitmap(menusymbol[i], menucolor[i]);
+      delay(300);
+      matrix->fillRect(0,0, 8,8, LED_BLACK);   // Matrix is black
+      if (checkButton() != CHOICE_NONE) return;
+    }
 
   }
 }
