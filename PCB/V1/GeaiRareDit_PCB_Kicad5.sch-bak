@@ -14,17 +14,6 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L Project_Library:ARDUPROMINI_pins_on_4_sides uP1
-U 1 1 5DF46C53
-P 8000 3650
-F 0 "uP1" H 7412 3797 60  0000 C CNN
-F 1 "ARDUPROMINI_pins_on_4_sides" H 7412 3691 60  0000 C CNN
-F 2 "lib_fp:ArduinoProMini_pins_on_4_sides_big_holes" H 8000 3650 60  0001 C CNN
-F 3 "" H 8000 3650 60  0000 C CNN
-	1    8000 3650
-	1    0    0    -1  
-$EndComp
-$Comp
 L Project_Library:ITG_MPU6050 U3
 U 1 1 5DF47988
 P 9500 2300
@@ -216,18 +205,10 @@ Text Label 6300 5650 2    50   ~ 0
 WS2812B_DATA_IN
 Text Label 6200 5550 2    50   ~ 0
 MOSFET_CTRL
-Wire Wire Line
-	6800 5450 5150 5450
 Text Label 6500 5450 0    50   ~ 0
 D5
-Wire Wire Line
-	4750 5350 6800 5350
 Text Label 6500 5350 0    50   ~ 0
 D4
-Wire Wire Line
-	3950 5150 6800 5150
-Wire Wire Line
-	6800 5250 4350 5250
 Text Label 6500 5150 0    50   ~ 0
 D2
 Text Label 6500 5250 0    50   ~ 0
@@ -319,28 +300,6 @@ Wire Wire Line
 	1300 6400 1300 6700
 Text Label 1300 6500 0    50   ~ 0
 +BATT
-$Comp
-L Connector_Generic:Conn_02x04_Counter_Clockwise J2
-U 1 1 5DF49622
-P 1850 4200
-F 0 "J2" H 1900 4517 50  0000 C CNN
-F 1 "EXT_BUTTONS" H 1900 4426 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_2x04_P2.54mm_Horizontal" H 1850 4200 50  0001 C CNN
-F 3 "~" H 1850 4200 50  0001 C CNN
-	1    1850 4200
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:GND #PWR01
-U 1 1 5DF7CD05
-P 1100 4950
-F 0 "#PWR01" H 1100 4700 50  0001 C CNN
-F 1 "GND" H 1105 4777 50  0000 C CNN
-F 2 "" H 1100 4950 50  0001 C CNN
-F 3 "" H 1100 4950 50  0001 C CNN
-	1    1100 4950
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	1600 1100 1600 1700
 Wire Wire Line
@@ -360,8 +319,6 @@ F 3 "" H 3500 5050 50  0001 C CNN
 	1    3500 5050
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	3500 5050 6800 5050
 Wire Wire Line
 	8400 4750 9050 4750
 Text Label 9050 4750 0    50   ~ 0
@@ -444,75 +401,6 @@ BUZZER
 Text Label 3400 2050 0    50   ~ 0
 MOSFET_CTRL
 $Comp
-L power:GND #PWR05
-U 1 1 5DF58403
-P 2650 4950
-F 0 "#PWR05" H 2650 4700 50  0001 C CNN
-F 1 "GND" H 2655 4777 50  0000 C CNN
-F 2 "" H 2650 4950 50  0001 C CNN
-F 3 "" H 2650 4950 50  0001 C CNN
-	1    2650 4950
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	1650 4300 1350 4300
-Wire Wire Line
-	1650 4100 1350 4100
-Wire Wire Line
-	1650 4200 1100 4200
-Wire Wire Line
-	1650 4400 1100 4400
-Wire Wire Line
-	1100 4200 1100 4400
-Connection ~ 1100 4400
-Wire Wire Line
-	1100 4400 1100 4950
-Wire Wire Line
-	2150 4400 2450 4400
-Wire Wire Line
-	2150 4200 2450 4200
-Wire Wire Line
-	2150 4100 2650 4100
-Wire Wire Line
-	2650 4300 2650 4950
-Wire Wire Line
-	2650 4100 2650 4300
-Connection ~ 2650 4300
-Wire Wire Line
-	2150 4300 2650 4300
-Text Label 2450 4400 0    50   ~ 0
-D3
-Text Label 2450 4200 0    50   ~ 0
-D2
-Text Label 1350 4100 0    50   ~ 0
-D5
-Text Label 1350 4300 0    50   ~ 0
-D4
-$Comp
-L Switch:SW_Push SW5
-U 1 1 5DF853A9
-P 5050 4750
-F 0 "SW5" V 4950 4650 50  0000 R CNN
-F 1 "RESET_PUSH" V 5050 4750 50  0000 R CNN
-F 2 "Button_Switch_THT:SW_PUSH_6mm_H5mm" H 5050 4950 50  0001 C CNN
-F 3 "~" H 5050 4950 50  0001 C CNN
-	1    5050 4750
-	0    -1   -1   0   
-$EndComp
-Wire Wire Line
-	6800 4950 5050 4950
-$Comp
-L power:GND #PWR011
-U 1 1 5DF87577
-P 4650 4550
-F 0 "#PWR011" H 4650 4300 50  0001 C CNN
-F 1 "GND" H 4655 4377 50  0000 C CNN
-F 2 "" H 4650 4550 50  0001 C CNN
-F 3 "" H 4650 4550 50  0001 C CNN
-	1    4650 4550
-	1    0    0    -1  
-$EndComp
-$Comp
 L Project_Library:WS2812B_8x8_matrix U2
 U 1 1 5DFD1EF0
 P 6150 850
@@ -533,177 +421,6 @@ Wire Wire Line
 	6450 1450 7350 1450
 Text Label 7350 1450 0    50   ~ 0
 WS2812B_DATA_IN
-$Comp
-L Connector:Conn_01x01_Female GND1
-U 1 1 5E0D41F2
-P 9000 4850
-F 0 "GND1" H 9028 4830 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 4785 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 4850 50  0001 C CNN
-F 3 "~" H 9000 4850 50  0001 C CNN
-	1    9000 4850
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female RESET1
-U 1 1 5E0DE159
-P 9000 4950
-F 0 "RESET1" H 9028 4930 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 4885 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 4950 50  0001 C CNN
-F 3 "~" H 9000 4950 50  0001 C CNN
-	1    9000 4950
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female 3.3V1
-U 1 1 5E0DE7C8
-P 9000 5050
-F 0 "3.3V1" H 9028 5030 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 4985 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5050 50  0001 C CNN
-F 3 "~" H 9000 5050 50  0001 C CNN
-	1    9000 5050
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female A3
-U 1 1 5E0DEDD9
-P 9000 5150
-F 0 "A3" H 9028 5130 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5085 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5150 50  0001 C CNN
-F 3 "~" H 9000 5150 50  0001 C CNN
-	1    9000 5150
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female A2
-U 1 1 5E0DF102
-P 9000 5250
-F 0 "A2" H 9028 5230 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5185 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5250 50  0001 C CNN
-F 3 "~" H 9000 5250 50  0001 C CNN
-	1    9000 5250
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female A1
-U 1 1 5E0DF4F4
-P 9000 5350
-F 0 "A1" H 9028 5330 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5285 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5350 50  0001 C CNN
-F 3 "~" H 9000 5350 50  0001 C CNN
-	1    9000 5350
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female D13
-U 1 1 5E0DF946
-P 9000 5550
-F 0 "D13" H 9028 5530 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5485 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5550 50  0001 C CNN
-F 3 "~" H 9000 5550 50  0001 C CNN
-	1    9000 5550
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female A0
-U 1 1 5E0DFC93
-P 9000 5450
-F 0 "A0" H 9028 5430 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5385 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5450 50  0001 C CNN
-F 3 "~" H 9000 5450 50  0001 C CNN
-	1    9000 5450
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female D12
-U 1 1 5E0E914B
-P 9000 5650
-F 0 "D12" H 9028 5630 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5585 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5650 50  0001 C CNN
-F 3 "~" H 9000 5650 50  0001 C CNN
-	1    9000 5650
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female D11
-U 1 1 5E0E95D6
-P 9000 5750
-F 0 "D11" H 9028 5730 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5685 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5750 50  0001 C CNN
-F 3 "~" H 9000 5750 50  0001 C CNN
-	1    9000 5750
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female D10
-U 1 1 5E0E9A48
-P 9000 5850
-F 0 "D10" H 9028 5830 50  0000 L CNN
-F 1 "Conn_01x01_Female" H 9028 5785 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 9000 5850 50  0001 C CNN
-F 3 "~" H 9000 5850 50  0001 C CNN
-	1    9000 5850
-	1    0    0    -1  
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female TX0
-U 1 1 5E0EA1B4
-P 6300 4750
-F 0 "TX0" H 6400 4750 50  0000 C CNN
-F 1 "Conn_01x01_Female" H 6328 4685 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 6300 4750 50  0001 C CNN
-F 3 "~" H 6300 4750 50  0001 C CNN
-	1    6300 4750
-	-1   0    0    1   
-$EndComp
-$Comp
-L Connector:Conn_01x01_Female RX1
-U 1 1 5E0EADBF
-P 6300 4850
-F 0 "RX1" H 6400 4850 50  0000 C CNN
-F 1 "Conn_01x01_Female" H 6328 4785 50  0001 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 6300 4850 50  0001 C CNN
-F 3 "~" H 6300 4850 50  0001 C CNN
-	1    6300 4850
-	-1   0    0    1   
-$EndComp
-Wire Wire Line
-	6500 4750 6800 4750
-Wire Wire Line
-	6500 4850 6800 4850
-Wire Wire Line
-	8800 4850 8400 4850
-Wire Wire Line
-	8400 4950 8800 4950
-Wire Wire Line
-	8800 5050 8400 5050
-Wire Wire Line
-	8400 5150 8800 5150
-Wire Wire Line
-	8400 5250 8800 5250
-Wire Wire Line
-	8800 5350 8400 5350
-Wire Wire Line
-	8400 5450 8800 5450
-Wire Wire Line
-	8800 5550 8400 5550
-Wire Wire Line
-	8400 5650 8800 5650
-Wire Wire Line
-	8800 5750 8400 5750
-Wire Wire Line
-	8400 5850 8800 5850
-Wire Wire Line
-	5050 4550 4650 4550
 $Comp
 L Device:R R3
 U 1 1 5DF71109
@@ -775,4 +492,96 @@ Wire Wire Line
 	5150 5450 5150 5700
 Wire Wire Line
 	5150 5800 5150 5950
+Wire Wire Line
+	6800 5450 5150 5450
+Wire Wire Line
+	4750 5350 6800 5350
+Wire Wire Line
+	6800 5250 4350 5250
+Wire Wire Line
+	3950 5150 6800 5150
+Wire Wire Line
+	3500 5050 6800 5050
+$Comp
+L Project_Library:ARDUPROMINI_pins_on_4_sides uP1
+U 1 1 5DF46C53
+P 8000 3650
+F 0 "uP1" H 7412 3797 60  0000 C CNN
+F 1 "ARDUPROMINI_pins_on_4_sides" H 7412 3691 60  0000 C CNN
+F 2 "lib_fp:ArduinoProMini_pins_on_4_sides_big_holes" H 8000 3650 60  0001 C CNN
+F 3 "" H 8000 3650 60  0000 C CNN
+	1    8000 3650
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0101
+U 1 1 5E2AECCA
+P 10050 4850
+F 0 "#PWR0101" H 10050 4600 50  0001 C CNN
+F 1 "GND" H 10055 4677 50  0000 C CNN
+F 2 "" H 10050 4850 50  0001 C CNN
+F 3 "" H 10050 4850 50  0001 C CNN
+	1    10050 4850
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector_Generic:Conn_01x11 J2
+U 1 1 5E2B26D6
+P 9650 5350
+F 0 "J2" H 9730 5392 50  0000 L CNN
+F 1 "Conn_01x11" H 9730 5301 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x11_P2.54mm_Vertical" H 9650 5350 50  0001 C CNN
+F 3 "~" H 9650 5350 50  0001 C CNN
+	1    9650 5350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	10050 4850 10050 4750
+Wire Wire Line
+	10050 4750 9450 4750
+Wire Wire Line
+	9450 4750 9450 4850
+Wire Wire Line
+	9450 4850 8400 4850
+Connection ~ 9450 4850
+Wire Wire Line
+	9450 4950 8400 4950
+Wire Wire Line
+	8400 5050 9450 5050
+Wire Wire Line
+	9450 5150 8400 5150
+Wire Wire Line
+	8400 5250 9450 5250
+Wire Wire Line
+	9450 5350 8400 5350
+Wire Wire Line
+	9450 5650 8400 5650
+Wire Wire Line
+	8400 5750 9450 5750
+Wire Wire Line
+	8400 5850 9450 5850
+Text Label 8600 4950 0    50   ~ 0
+RESET
+Text Label 8650 5050 0    50   ~ 0
+3.3V
+Text Label 8650 5150 0    50   ~ 0
+A3
+Text Label 8650 5250 0    50   ~ 0
+A2
+Text Label 8650 5350 0    50   ~ 0
+A1
+Text Label 8650 5450 0    50   ~ 0
+A0
+Wire Wire Line
+	9450 5550 8400 5550
+Wire Wire Line
+	8400 5450 9450 5450
+Text Label 8650 5550 0    50   ~ 0
+D13
+Text Label 8650 5650 0    50   ~ 0
+D12
+Text Label 8650 5750 0    50   ~ 0
+D11
+Text Label 8650 5850 0    50   ~ 0
+D10
 $EndSCHEMATC

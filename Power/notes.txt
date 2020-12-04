@@ -1,0 +1,12 @@
+Pro mini 3.3V 16Mhz, alimenté RAW 3.8V, avec LED d'origine, MCU seul:
+- Courant mode normal=8.5mA approximativement.
+- Courant mode sleep=1.7mA approximativement.
+
+Proto 0 GeaiRareDit:
+- Courant mode sleep=1.7mA approximativement.
+
+Proto 1 GeaiRareDit:
+- Courant mode sleep=40mA approximativement.
+
+Plan d'action:
+- Assembler un proto breadboard selon schema du proto 1 et mesurer l'augmentation de consommation au fur et à mesure que les composants s'ajoutent.

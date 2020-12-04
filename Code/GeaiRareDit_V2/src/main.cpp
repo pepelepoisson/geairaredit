@@ -1,5 +1,13 @@
 /*
 
+To do:
+- Save high score in EEPROM
+- Use accel to sense orientation
+- Change splash screen
+- Add cool lighting when goes to sleep
+- Add possibility to cut sound
+- Done: Display battery level a startup and return from sleep
+
 Inspired from:
 - Simon Says code in SparkFun Inventor's Kit Example sketch 16
 - Vcc read from ???
@@ -17,6 +25,10 @@ Inspired from:
 #include "monochrome_5x3_symbols.h"  // Monochrome bitmaps for 5x3 numbers and symbols
 #include "monochrome_8x8_symbols.h"  // Monochrome bitmaps for 8x8 symbols
 #include "small_font_5x3-4pts.h"     // Definition of alternate 5x3-4pts font
+#include "I2Cdev.h"
+#include "MPU6050.h"
+#include "Wire.h"
+#include "RunningMedian.h"
 #include <avr/interrupt.h> // Librairies for sleep mode
 #include <avr/power.h> // Librairies for sleep mode
 #include <avr/sleep.h> // Librairies for sleep mode
@@ -26,11 +38,12 @@ Inspired from:
 * Public Constants
 *************************************************/
 // USER-DEFINED CONFIG SETTINGS AND TUNABLES
-#define BRIGHTNESS 10                 // 0-255 LEDs brightness - default setting
-#define SHOW_SPLASH_SCREEN 1          // Set to 1 to show splash screen at startup, 0 otherwise
+#define BRIGHTNESS 5                 // 0-255 LEDs brightness - default setting
+#define SHOW_SPLASH_SCREEN 0          // Set to 1 to show splash screen at startup, 0 otherwise
 #define USE_5X3_FONT 1                // Set to 1 to use small 5pts font instead of standard 7pts
-#define MAX_REST_TIME 600000           //max waiting time before going to sleep
-#define MAX_IDLE_TIME 30000           //max waiting time before going to sleep
+#define MAX_REST_TIME 60000           //max waiting time before going to sleep
+#define MAX_IDLE_TIME 60000           //max waiting time with animation before going to rest
+#define TILT_LIMIT 20
 
 // Notes used for sounds and tones
 #define NOTE_B0 31
@@ -132,11 +145,13 @@ Inspired from:
 
 // Hardware pins
 #define LEDS_PIN 7        // Pin connected to WS2812B data in
+#define BUILT_IN_LED 13
 #define MOSFET_PIN 6      // Pin connected to MOSFET - Must be active to supply power to LEDs
-#define BUTTON_RED    3
-#define BUTTON_GREEN  4
-#define BUTTON_BLUE   2  // Is also used to wake-up board from sleep mode
-#define BUTTON_ORANGE 5
+#define BUTTON_RED    2
+#define BUTTON_GREEN  3
+#define BUTTON_BLUE   5  // Is also used to wake-up board from sleep mode
+#define BUTTON_ORANGE 4
+#define MPU_VCC  8  // VCC supply to MPU accelerometer
 #define BUZZER1  9  // Buzzer pin definitions (the other pin goes to ground)
 
 // Define game parameters
@@ -203,29 +218,157 @@ Adafruit_NeoMatrix *matrix = new Adafruit_NeoMatrix(mw, mh, LEDS_PIN,
 #define LED_WHITE_MEDIUM  (LED_RED_MEDIUM  + LED_GREEN_MEDIUM  + LED_BLUE_MEDIUM)
 #define LED_WHITE_HIGH    (LED_RED_HIGH    + LED_GREEN_HIGH    + LED_BLUE_HIGH)
 
+// Variables used in CheckAccel() routine
+MPU6050 accelgyro;
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+String accel_status=String("unknown");
+RunningMedian a1RollingSample = RunningMedian(5);
+RunningMedian a2RollingSample = RunningMedian(5);
+RunningMedian a3RollingSample = RunningMedian(5);
+int a1_offset=0,a2_offset=0,a3_offset=0;
+enum POSITION { NONE, POSITION_1,POSITION_2,POSITION_3,POSITION_4, POSITION_5, POSITION_6, RED_DOWN, BLUE_DOWN, YELLOW_DOWN, GREEN_DOWN, RED_RELEASED, BLUE_RELEASED, YELLOW_RELEASED, GREEN_RELEASED, COUNT };  // Used to detect orientation of the game relative to gravity
+const char *position[COUNT] = { "None", "POSITION_1", "POSITION_2", "POSITION_3", "POSITION_4", "POSITION_5", "POSITION_6","RED_DOWN", "BLUE_DOWN", "YELLOW_DOWN", "GREEN_DOWN", "RED_RELEASED", "BLUE_RELEASED", "YELLOW_RELEASED", "GREEN_RELEASED" };
+uint8_t orientation = NONE, previous_orientation=NONE;
+float angle_2_horizon=0;
+
 //Definition of various other variables
-uint16_t bmpcolor[] = { LED_GREEN_HIGH, LED_BLUE_HIGH, LED_RED_HIGH };
-uint16_t morebmpcolor[] = { LED_RED_VERYLOW,LED_RED_LOW,LED_RED_MEDIUM,LED_RED_HIGH,LED_GREEN_VERYLOW,LED_GREEN_LOW,LED_GREEN_MEDIUM,LED_GREEN_HIGH,
+int16_t bmpcolor[] = { LED_GREEN_HIGH, LED_BLUE_HIGH, LED_RED_HIGH };
+int16_t morebmpcolor[] = { LED_RED_VERYLOW,LED_RED_LOW,LED_RED_MEDIUM,LED_RED_HIGH,LED_GREEN_VERYLOW,LED_GREEN_LOW,LED_GREEN_MEDIUM,LED_GREEN_HIGH,
                             LED_BLUE_VERYLOW,LED_BLUE_LOW,LED_BLUE_MEDIUM,LED_BLUE_HIGH,LED_ORANGE_VERYLOW,LED_ORANGE_LOW,LED_ORANGE_MEDIUM,LED_ORANGE_HIGH,
                             LED_PURPLE_VERYLOW,LED_PURPLE_LOW,LED_PURPLE_MEDIUM,LED_PURPLE_HIGH,LED_CYAN_VERYLOW,LED_CYAN_LOW,LED_CYAN_MEDIUM,LED_CYAN_HIGH,
                             LED_WHITE_VERYLOW,LED_WHITE_LOW,LED_WHITE_MEDIUM,LED_WHITE_HIGH};
 uint8_t y_text_ref= 0;  // Reference position used when displaying text on the matrix
 int Vcc=0;  // Variable holding battery voltage in mV
-unsigned long start_time=0, current_time=0, elapsed_time=0;  // Time references and counters
+unsigned long ref_time=0, start_time=0, current_time=0, elapsed_time=0;  // Time references and counters
 uint16_t menucolor[] = { LED_RED_MEDIUM, LED_BLUE_MEDIUM,  LED_ORANGE_MEDIUM, LED_GREEN_MEDIUM};  // Sequence of colors in menu cycles
 uint16_t menusymbol[] = { 7,8,9,10 };  // Sequence of symbols from monochrome_8x8_symbols.h in menu cycles
-
-/*************************************************
+uint8_t i=0;  // general purpose index
+/*********************************s****************
 * Subroutines
 *************************************************/
 
-void display_bitmap(uint8_t bmp_num, uint16_t color) {   // Displays 8x8 monochrome images from mono_bmp table
+float CheckAccel(){
+  // Reads acceleration from MPU6050 to evaluate current condition.
+  // Tunables:
+  // Output values: accel_status=fallen or straight
+  //                orientation=POSITION_1 to POSITION_6
+  //                angle_2_horizon
+  // Get accelerometer readings
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  //Serial.print("ax/164=");Serial.print(ax/164);
+  //Serial.print(" ay/164=");Serial.print(ay/164);
+  //Serial.print(" az/164=");Serial.println(az/164);
+
+  float angle_2_horizon=0;
+
+  // Convert to "cents of g" for MPU range set to 2g
+  int a1 = ax/164;
+  int a2 = ay/164;
+  int a3 = az/164;
+
+  // Update rolling average for smoothing
+  a1RollingSample.add(a1);
+  a2RollingSample.add(a2);
+  a3RollingSample.add(a3);
+
+  // Get median
+  int a1RollingSampleMedian=a1RollingSample.getMedian()-a1_offset;
+  int a2RollingSampleMedian=a2RollingSample.getMedian()-a2_offset;
+  int a3RollingSampleMedian=a3RollingSample.getMedian()-a3_offset;
+
+  // Evaluate current condition based on smoothed accelarations
+  //accel_status="unknown";
+  //if (abs(a2RollingSampleMedian)>abs(a3RollingSampleMedian)||abs(a1RollingSampleMedian)>abs(a3RollingSampleMedian)){accel_status="fallen";}
+  //if (abs(a2RollingSampleMedian)<abs(a3RollingSampleMedian)&&abs(a1RollingSampleMedian)<abs(a3RollingSampleMedian)){accel_status="straight";}
+  //else {accel_status="unknown";}
+
+
+
+  if (a1RollingSampleMedian <= -TILT_LIMIT && (a2RollingSampleMedian) <= -TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation != RED_DOWN) {
+  // Red = down
+  orientation = RED_DOWN;
+  }
+  else if (a1RollingSampleMedian <= -TILT_LIMIT && (a2RollingSampleMedian) >= TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation != BLUE_DOWN) {
+  // Red = down
+  orientation = BLUE_DOWN;
+  }
+  else if (a1RollingSampleMedian >= TILT_LIMIT && (a2RollingSampleMedian) >= TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation != YELLOW_DOWN) {
+  // Red = down
+  orientation = YELLOW_DOWN;
+  }
+  else if (a1RollingSampleMedian >= TILT_LIMIT && (a2RollingSampleMedian) <= -TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation != GREEN_DOWN) {
+  // Red = down
+  orientation = GREEN_DOWN;
+  }
+  else if (a1RollingSampleMedian >= -TILT_LIMIT && (a2RollingSampleMedian) >= -TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation == RED_DOWN) {
+  // Red = down
+  orientation = RED_RELEASED;
+  }
+  else if (a1RollingSampleMedian >= -TILT_LIMIT && (a2RollingSampleMedian) <= TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation == BLUE_DOWN) {
+  // Red = down
+  orientation = BLUE_RELEASED;
+  }
+  else if (a1RollingSampleMedian <= TILT_LIMIT && (a2RollingSampleMedian) <= TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation == YELLOW_DOWN) {
+  // Red = down
+  orientation = YELLOW_RELEASED;
+  }
+  else if (a1RollingSampleMedian <= TILT_LIMIT && (a2RollingSampleMedian) >= -TILT_LIMIT && (a3RollingSampleMedian) <= -80 && orientation == GREEN_DOWN) {
+  // Red = down
+  orientation = GREEN_RELEASED;
+  }
+  else if (a1RollingSampleMedian >= 80 && abs(a3RollingSampleMedian) <= 25 && abs(a2RollingSampleMedian) <= 25 && orientation != POSITION_1) {
+    // Red = top right
+    orientation = POSITION_1;}
+  else if (a2RollingSampleMedian >= 80 && abs(a3RollingSampleMedian) <= 25 && abs(a1RollingSampleMedian) <= 25 && orientation != POSITION_2) {
+    // Red = top left
+    orientation = POSITION_2;}
+  else if (a1RollingSampleMedian <= -80 && abs(a3RollingSampleMedian) <= 25 && abs(a2RollingSampleMedian) <= 25 && orientation != POSITION_3) {
+    // Red = bottom left
+    orientation = POSITION_3;}
+  else if (a2RollingSampleMedian <= -80 && abs(a3RollingSampleMedian) <= 25 && abs(a1RollingSampleMedian) <= 25 && orientation != POSITION_4) {
+    // REd = bottom right
+    orientation = POSITION_4;}
+  else if (a3RollingSampleMedian <= -80 && abs(a1RollingSampleMedian) <= 25 && abs(a2RollingSampleMedian) <= 25 && orientation != POSITION_5) {
+    // Red = up
+    orientation = POSITION_5;}
+  else if (a3RollingSampleMedian >= 80 && abs(a1RollingSampleMedian) <= 25 && abs(a2RollingSampleMedian) <= 25 && orientation != POSITION_6) {
+    // Red = down
+    orientation = POSITION_6;
+  }
+  else {
+    // orientation = FACE_NONE;
+  }
+Serial.print("orientation="); Serial.println(position[orientation]);
+ angle_2_horizon=atan2(float(a3RollingSampleMedian),float(max(abs(a2RollingSampleMedian),abs(a1RollingSampleMedian))))*180/PI;
+
+  /*
+  // for debugging
+  Serial.print("a1:");
+  Serial.print(a1RollingSampleMedian);
+  Serial.print(" a2:");
+  Serial.print(a2RollingSampleMedian);
+  Serial.print(" a3:");
+  Serial.print(a3RollingSampleMedian);
+  Serial.print(" - ");
+  Serial.print(position_stecchino[orientation]);
+  Serial.print(" - ");
+  Serial.print(accel_status);
+  Serial.print(" - ");
+  Serial.println(angle_2_horizon);
+  */
+
+   return angle_2_horizon;
+ }
+
+void display_bitmap(uint8_t bmp_num, uint16_t color){   // Displays 8x8 monochrome images from mono_bmp table
     matrix->fillRect(0,0, 8,8, LED_BLACK);  // Clear the space under the bitmap that will be drawn
     matrix->drawBitmap(0, 0, mono_bmp[bmp_num], 8, 8, color);
     matrix->show();
 }
 
-void display_5x3_font(uint8_t bmp_num, uint16_t color,uint8_t xref, uint8_t yref) {   // Displays 5x3 monochrome images or symbols from small_font table
+void display_5x3_font(uint8_t bmp_num, uint16_t color,uint8_t xref, uint8_t yref){   // Displays 5x3 monochrome images or symbols from small_font table
     matrix->fillRect(xref, yref, xref+3,yref+5, LED_BLACK);  // Clear the space under the bitmap that will be drawn
     matrix->drawBitmap(xref, yref, small_font[bmp_num], 3, 5, color);
     matrix->show();
@@ -249,24 +392,23 @@ void display_5x3_integer(int number){   // Handles display of numbers made of up
   display_5x3_font(unit, color,5,0);
 }
 
-void display_scrolling_text(String message, uint8_t rotation,uint8_t text_color, uint8_t y_pos) {
+void display_scrolling_text(String message, int16_t rotation,int16_t text_color, int16_t y_pos){
     //matrix->clear();
     matrix->setTextWrap(false);  // we don't wrap text so it scrolls nicely
     matrix->setTextSize(1);
     matrix->setRotation(rotation);
-    uint16_t message_length=message.length();
-    uint16_t font_width;
+    matrix->setTextColor(text_color);
+    int16_t message_length=message.length();
+    int16_t font_width;
     #if USE_5X3_FONT
       font_width=4;
     #else
-      font_width=5
+      font_width=5;
     #endif
 
     for (int16_t x=7; x>=-font_width*message_length; x--) {
        matrix->clear();
-       //matrix->fillRect(0,0, 8,y_pos+1, LED_BLACK);
        matrix->setCursor(x,y_pos);
-       matrix->setTextColor(morebmpcolor[text_color]);
        matrix->print(message);
        matrix->show();
        delay(100);  // This delay sets the speed of scrolling text
@@ -274,39 +416,7 @@ void display_scrolling_text(String message, uint8_t rotation,uint8_t text_color,
     matrix->fillRect(0,0, 8,8, LED_BLACK);   // Matrix is black after text has scrolled completely
 }
 
-void pinInterrupt(void) {  // Used to allow board wake up by button press
-     detachInterrupt(0);
- }
-
-void sleepNow(void){  // Routine to put board to sleep and control actions on waking-up
-    // Set pin 2 as interrupt and attach handler:
-    attachInterrupt(0, pinInterrupt, LOW);
-    delay(100);
-    //
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    //
-    // Set sleep enable (SE) bit:
-    sleep_enable();
-    //
-    // Put the device to sleep:
-    matrix->fillRect(0,0, 8,8, LED_BLACK);  // Clear the matrix
-    matrix->show();
-
-    digitalWrite(MOSFET_PIN,LOW);   // turn LEDs off to indicate sleep
-    Serial.println("Going to sleep... ");
-    sleep_mode();
-    //
-    // Upon waking up, sketch continues from this point.
-    sleep_disable();
-    digitalWrite(MOSFET_PIN,HIGH);   // turn LED on to indicate awake
-    delay(100);
-
-    Serial.println("Restarting... ");
-    start_time=millis();
-}
-
-
-long readVcc() {
+long readVcc(){
   // Read 1.1V reference against AVcc
   // set the reference to Vcc and the measurement to the internal 1.1V reference
   #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
@@ -330,6 +440,69 @@ long readVcc() {
 
   result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
   return result; // Vcc in millivolts
+}
+
+void showBatteryState(uint16_t currentVCC){ // Use icons and colors to show battery state based on VCC value
+
+  // Values used to set battery indicator
+  #define LOW_VCC 2700  // lower vcc value when checking battery level
+  #define ALARM_VCC 3000 // VCC level below which the red Battery alarm is shown
+  #define HIGH_VCC 3200  // higher vcc value when checking battery level
+
+  uint16_t batteryVCC[] = { LOW_VCC,ALARM_VCC,ALARM_VCC,HIGH_VCC,HIGH_VCC };  // Sequence of symbols from monochrome_8x8_symbols.h in battery level display
+  uint16_t batterycolor[] = { LED_RED_MEDIUM, LED_ORANGE_MEDIUM,  LED_ORANGE_MEDIUM, LED_GREEN_MEDIUM,LED_GREEN_MEDIUM};  // Sequence of colors in battery level display
+  uint16_t batterysymbol[] = { 0,1,2,3,4 };  // Sequence of symbols from monochrome_8x8_symbols.h in battery level display
+  matrix->fillRect(0,0, 8,8, LED_BLACK);   // Matrix is black
+  display_bitmap(batterysymbol[0], batterycolor[0]);
+  delay(300);
+  for (uint8_t i=0; i<5;i++){
+    if (currentVCC>=batteryVCC[i]){
+      matrix->fillRect(0,0, 8,8, LED_BLACK);   // Matrix is black
+      display_bitmap(batterysymbol[i], batterycolor[i]);
+      delay(300);
+    }
+  }
+  delay (1000);
+  matrix->fillRect(0,0, 8,8, LED_BLACK);   // Matrix is black
+
+}
+
+void pinInterrupt(void){  // Used to allow board wake up by button press
+     detachInterrupt(0);
+ }
+
+void sleepNow(void){  // Routine to put board to sleep and control actions on waking-up
+    // Set pin 2 as interrupt and attach handler:
+    attachInterrupt(0, pinInterrupt, LOW);
+    delay(100);
+    //
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    //
+    // Set sleep enable (SE) bit:
+    sleep_enable();
+    //
+    // Put the device to sleep:
+    matrix->fillRect(0,0, 8,8, LED_BLACK);  // Clear the matrix
+    matrix->show();
+
+    digitalWrite(MOSFET_PIN,LOW);   // turn LEDs off to indicate sleep
+    digitalWrite(MPU_VCC, LOW);  // Turn off power supply to MPU
+    Serial.println("Going to sleep... ");
+    sleep_mode();
+    //
+    // Upon waking up, sketch continues from this point.
+    sleep_disable();
+    digitalWrite(MOSFET_PIN,HIGH);   // turn LED on to indicate awake
+    digitalWrite(MPU_VCC, HIGH);  // Turn on power supply to MPU
+    delay(100);
+
+    Serial.println("Restarting... ");
+    start_time=millis();
+
+    // Check battery state and print to serial
+    Vcc=int(readVcc());
+    Serial.print("VCC=");Serial.print(Vcc);Serial.println("mV");
+    showBatteryState(Vcc);
 }
 
 void setLEDs(byte leds){  // Lights a given LEDs - Pass in a byte that is made up from CHOICE_RED, CHOICE_ORANGE, etc
@@ -368,11 +541,12 @@ void setLEDs(byte leds){  // Lights a given LEDs - Pass in a byte that is made u
   matrix->show();
 }
 
-byte checkButton(void) {  // Returns a '1' bit in the position corresponding to CHOICE_RED, CHOICE_GREEN, etc.
-  if (digitalRead(BUTTON_RED) == 0) return(CHOICE_RED);
-  else if (digitalRead(BUTTON_GREEN) == 0) return(CHOICE_GREEN);
-  else if (digitalRead(BUTTON_BLUE) == 0) return(CHOICE_BLUE);
-  else if (digitalRead(BUTTON_ORANGE) == 0) return(CHOICE_ORANGE);
+byte checkButton(void){  // Returns a '1' bit in the position corresponding to CHOICE_RED, CHOICE_GREEN, etc.
+  //CheckAccel();
+  if (digitalRead(BUTTON_RED) == 0 || orientation == RED_RELEASED) return(CHOICE_RED);
+  else if (digitalRead(BUTTON_GREEN) == 0 || orientation == GREEN_RELEASED) return(CHOICE_GREEN);
+  else if (digitalRead(BUTTON_BLUE) == 0 || orientation == BLUE_RELEASED) return(CHOICE_BLUE);
+  else if (digitalRead(BUTTON_ORANGE) == 0 || orientation == YELLOW_RELEASED) return(CHOICE_ORANGE);
 
   return(CHOICE_NONE); // If no button is pressed, return none
 }
@@ -394,11 +568,10 @@ void buzz_sound(int buzz_length_ms, int buzz_delay_us){  // Toggle buzzer every 
     digitalWrite(BUZZER1, HIGH);
     delayMicroseconds(buzz_delay_us);
   }
+  digitalWrite(BUZZER1, LOW);  // Always power down piezo when sound is finished
 }
 
-
-void toner(byte which, int buzz_length_ms)
-{
+void toner(byte which, int buzz_length_ms){
   // Light an LED and play tone
   // Red, upper left:     440Hz - 2.272ms - 1.136ms pulse
   // Green, upper right:  880Hz - 1.136ms - 0.568ms pulse
@@ -426,8 +599,7 @@ void toner(byte which, int buzz_length_ms)
   setLEDs(CHOICE_OFF); // Turn off all LEDs
 }
 
-byte wait_for_button(void)
-{
+byte wait_for_button(void){
   // Wait for a button to be pressed.
   // Returns one of LED colors (LED_RED, etc.) if successful, 0 if timed out
   long startTime = millis(); // Remember the time we started the this loop
@@ -464,6 +636,7 @@ void winner_sound(void){  // Play the winner sound. Toggle the buzzer at various
       delayMicroseconds(x);
     }
   }
+  digitalWrite(BUZZER1, LOW);  // Always power down piezo when sound is finished
 }
 
 void play_winner(void){  // Play the winner sound and lights
@@ -507,23 +680,45 @@ void attractMode(void){  // Show an "attract mode" display while waiting for use
   while(1)
   {
 
+
     if (millis()-start_time>MAX_IDLE_TIME){start_time=millis();RestMode();}
 
     while(checkButton() != CHOICE_NONE){delay(50);}  // Wait that button is released (used if returning from a button-induced wake-up)
 
-    for (uint8_t i=0; i<4;i++){
-      display_bitmap(menusymbol[i], menucolor[i]);
-      delay(300);
-      matrix->fillRect(0,0, 8,8, LED_BLACK);   // Matrix is black
+    //for (uint8_t i=0; i<4;i++){
+      if (millis()-ref_time>=300){
+        ref_time=millis();
+        matrix->fillRect(0,0, 8,8, LED_BLACK);   // Matrix is black
+        i=i+1;
+        if(i==4){i=0;}
+        display_bitmap(menusymbol[i], menucolor[i]);
+      }
+      angle_2_horizon=CheckAccel();
       if (checkButton() != CHOICE_NONE) return;
-    }
+    //}
 
   }
 }
 
-// Plays the current contents of the game moves
-void playMoves(void)
-{
+void test_tilt(void){
+  while(1)
+  {
+    if (millis()-start_time>MAX_IDLE_TIME){start_time=millis();RestMode();}
+    while(checkButton() != CHOICE_NONE){delay(50);}  // Wait that button is released (used if returning from a button-induced wake-up)
+    angle_2_horizon=CheckAccel();
+    if(orientation!=previous_orientation){
+      previous_orientation=orientation;
+      if(position[orientation]=="RED_DOWN"){setLEDs(CHOICE_RED);}
+      else if(position[orientation]=="BLUE_DOWN"){setLEDs(CHOICE_BLUE);}
+      else if(position[orientation]=="YELLOW_DOWN"){setLEDs(CHOICE_ORANGE);}
+      else if(position[orientation]=="GREEN_DOWN"){setLEDs(CHOICE_GREEN);}
+      else if(position[orientation]=="POSITION_5"){setLEDs(CHOICE_NONE);} // Turn off LEDs
+    }
+    if (checkButton() != CHOICE_NONE) return;
+  }
+}
+
+void playMoves(void){ // Plays the current contents of the game moves
   for (byte currentMove = 0 ; currentMove < gameRound ; currentMove++)
   {
     toner(gameBoard[currentMove], 150);
@@ -534,9 +729,7 @@ void playMoves(void)
   }
 }
 
-// Adds a new random button to the game sequence, by sampling the timer
-void add_to_moves(void)
-{
+void add_to_moves(void){ // Adds a new random button to the game sequence, by sampling the timer
   byte newButton = random(0, 4); //min (included), max (exluded)
 
   // We have to convert this number, 0 to 3, to CHOICEs
@@ -551,10 +744,8 @@ void add_to_moves(void)
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 //The following functions are related to game play only
 
-// Play the regular memory game
+boolean play_memory(void){ // Play the regular memory game
 // Returns 0 if player loses, or 1 if player wins
-boolean play_memory(void)
-{
   randomSeed(millis()); // Seed the random generator with random amount of millis()
 
   gameRound = 0; // Reset the game to the beginning
@@ -581,12 +772,10 @@ boolean play_memory(void)
   return true; // Player made it through all the rounds to win!
 }
 
-// Play the special 2 player battle mode
+boolean play_battle(void){ // Play the special 2 player battle mode
 // A player begins by pressing a button then handing it to the other player
 // That player repeats the button and adds one, then passes back.
 // This function returns when someone loses
-boolean play_battle(void)
-{
   gameRound = 0; // Reset the game frame back to one frame
 
   while (1) // Loop until someone fails
@@ -618,7 +807,6 @@ int melody[] = {  // Notes in the melody. Each note is about an 1/8th note, "0"s
   NOTE_E4, 0, NOTE_D4, NOTE_E4, NOTE_G4, 0,
   NOTE_D4, NOTE_E4, 0, NOTE_G4, 0, 0,
   NOTE_D4, 0, NOTE_E4, 0, NOTE_G4, 0, NOTE_A4, 0, NOTE_C5, 0};
-
 int noteDuration = 115; // This essentially sets the tempo, 115 is just about right for a disco groove :)
 int LEDnumber = 0; // Keeps track of which LED we are on during the beegees loop
 
@@ -660,10 +848,8 @@ void play_beegees(){  // Do nothing but play bad beegees music. This function is
   }
 }
 
-
-void setup()
-{
-  Serial.begin(9600);  // Establish serial connection for debugging
+void setup(){
+  Serial.begin(115200);  // Establish serial connection for debugging
 
   //Setup hardware inputs/outputs. These pins are defined in the hardware_versions header file
 
@@ -673,21 +859,34 @@ void setup()
   pinMode(BUTTON_BLUE, INPUT_PULLUP);
   pinMode(BUTTON_ORANGE, INPUT_PULLUP);
 
+  pinMode(BUILT_IN_LED, OUTPUT);
+  digitalWrite(BUILT_IN_LED, LOW);  // Turn off LED matrix 5V supply
+
   pinMode(MOSFET_PIN, OUTPUT);
   digitalWrite(MOSFET_PIN, HIGH);  // Turn on LED matrix 5V supply
+
+  pinMode(MPU_VCC, OUTPUT);
+  digitalWrite(MPU_VCC, HIGH);  // Turn on power supply to MPU
 
   //Setup outputs for buzzer
   pinMode(BUZZER1, OUTPUT);
 
-  // Check battery state and print to serial
-  Vcc=int(readVcc());
-  Serial.print("VCC=");Serial.print(Vcc);Serial.println("mV");
+  // MPU
+  Wire.begin();
+  delay(500);
+  accelgyro.initialize();
+  Serial.println("Starting MPU... ");
 
   // Initialize LED matrix
   matrix->setRotation(matrix_set_rotation[0]);   // Rotate display accordinly 0, 1, 2 or 3
   matrix->begin();
   matrix->setTextWrap(false);
   matrix->setBrightness(BRIGHTNESS);
+
+  #if USE_5X3_FONT
+    matrix->setFont(&small_5x34pt7b);  // Change from default 7pts font to custom 5x3 font
+    y_text_ref =6;
+  # endif
 
   # if SHOW_SPLASH_SCREEN
     for (int8_t x=7; x>=-32; x--) {
@@ -696,18 +895,28 @@ void setup()
        matrix->show();
        delay(200);
     }
-  //  display_scrolling_text("GeaiRareDit    ", 0,LED_GREEN_MEDIUM, 0);
-  //  matrix->fillRect(0,0, 8,8, LED_BLACK);
-  //  matrix->show();
+  display_scrolling_text("GeaiRareDit    ", 2,LED_GREEN_MEDIUM,y_text_ref);
+  matrix->fillRect(0,0, 8,8, LED_BLACK);
+  matrix->show();
   # endif
 
   matrix->clear();
-  delay(500);
+  //winner_sound();
+  delay(1000);
 
-  #if USE_5X3_FONT
-    matrix->setFont(&small_5x34pt7b);  // Change from default 7pts font to custom 5x3 font
-    y_text_ref =6;
-  # endif
+  // Check battery state and print to serial
+  Vcc=int(readVcc());
+  Serial.print("VCC=");Serial.print(Vcc);Serial.println("mV");
+  showBatteryState(Vcc);
+
+//debug
+  angle_2_horizon=CheckAccel();
+  Serial.println(angle_2_horizon);
+
+  if (checkButton() != CHOICE_NONE){
+    display_scrolling_text(String(Vcc), 2,LED_GREEN_MEDIUM,y_text_ref);
+  }
+
 
   //Mode checking
   gameMode = MODE_MEMORY; // By default, we're going to play the memory game
@@ -734,16 +943,18 @@ void setup()
   play_winner(); // After setup is complete, say hello to the world
 }
 
-void loop()
-{
-  attractMode(); // Blink lights while waiting for user to press a button
-
+void loop(){
+  //attractMode(); // Blink lights while waiting for user to press a button
+  test_tilt();  // Debug routine to check accel readings
   //display_bitmap(5, bmpcolor[2]);
   // Indicate the start of game play
   //setLEDs(CHOICE_RED | CHOICE_GREEN | CHOICE_BLUE | CHOICE_ORANGE); // Turn all LEDs on
   delay(1000);
   setLEDs(CHOICE_OFF); // Turn off LEDs
   delay(250);
+
+  angle_2_horizon=CheckAccel();
+  //Serial.println(condition);
 
   //if (checkButton() == CHOICE_ORANGE) play_beegees();
 

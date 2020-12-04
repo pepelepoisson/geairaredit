@@ -30,7 +30,7 @@ U 1 1 5DF487E8
 P 2950 2600
 F 0 "U1" H 2975 2119 60  0000 C CNN
 F 1 "LiPo_Mngmt_Board" H 2975 2013 60  0000 C CNN
-F 2 "lib_fp:LiPo_Mngmt_Board" H 2950 2600 60  0001 C CNN
+F 2 "lib_fp:LiPo_Mngmt_Board_Big_Holes" H 2950 2600 60  0001 C CNN
 F 3 "" H 2950 2600 60  0000 C CNN
 	1    2950 2600
 	1    0    0    -1  
