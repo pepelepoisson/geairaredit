@@ -147,9 +147,9 @@ Inspired from:
 #define LEDS_PIN 7        // Pin connected to WS2812B data in
 #define BUILT_IN_LED 13
 #define MOSFET_PIN 6      // Pin connected to MOSFET - Must be active to supply power to LEDs
-#define BUTTON_RED    2
+#define BUTTON_RED    2   // Is also used to wake-up board from sleep mode
 #define BUTTON_GREEN  3
-#define BUTTON_BLUE   5  // Is also used to wake-up board from sleep mode
+#define BUTTON_BLUE   5
 #define BUTTON_ORANGE 4
 #define MPU_VCC  8  // VCC supply to MPU accelerometer
 #define BUZZER1  9  // Buzzer pin definitions (the other pin goes to ground)
@@ -257,15 +257,22 @@ float CheckAccel(){
   // Get accelerometer readings
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-  //Serial.print("ax/164=");Serial.print(ax/164);
-  //Serial.print(" ay/164=");Serial.print(ay/164);
-  //Serial.print(" az/164=");Serial.println(az/164);
+  /*
+  Serial.print("ax/164=");Serial.print(ax/164);
+  Serial.print(" ay/164=");Serial.print(ay/164);
+  Serial.print(" az/164=");Serial.println(az/164);
+*/
 
+  Serial.print(ax/164);
+  Serial.print(",");Serial.print(ay/164);
+  Serial.print(",");Serial.println(az/164);
+  
   float angle_2_horizon=0;
 
   // Convert to "cents of g" for MPU range set to 2g
   int a1 = ax/164;
-  int a2 = ay/164;
+  //int a2 = ay/164;
+  int a2 = 60+ay/164;
   int a3 = az/164;
 
   // Update rolling average for smoothing
@@ -340,14 +347,14 @@ float CheckAccel(){
   else {
     // orientation = FACE_NONE;
   }
-Serial.print("orientation="); Serial.println(position[orientation]);
+//Serial.print("orientation="); Serial.println(position[orientation]);
  angle_2_horizon=atan2(float(a3RollingSampleMedian),float(max(abs(a2RollingSampleMedian),abs(a1RollingSampleMedian))))*180/PI;
 
   /*
   // for debugging
   Serial.print("a1:");
   Serial.print(a1RollingSampleMedian);
-  Serial.print(" a2:");
+  Serial.print(" a2:");// Is also used to wake-up board from sleep mode
   Serial.print(a2RollingSampleMedian);
   Serial.print(" a3:");
   Serial.print(a3RollingSampleMedian);
